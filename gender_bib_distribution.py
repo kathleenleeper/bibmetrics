@@ -1,18 +1,14 @@
-ls
-
-# coding: utf-8
-
-# In[1]:
+# Script calculates the percent of authors in a database with male, female, unisex, or unassigned names. Will count multiple authors once; accuracy of gender assignment has been validated by a (not-particuarly random) set of 100 names. cu
 
 from __future__ import division
 
 """gendering"""
-from genderComputer.genderComputer import GenderComputer
+from genderComputer.genderComputer import GenderComputer 
 
 """bibtex parsing"""
 import os
-import bibtexparser as b #module for bibtexin'
-from bibtexparser.bparser import BibTexParser #import to add customization
+import bibtexparser as b #module for bibtex parsing, obviously
+from bibtexparser.bparser import BibTexParser #add customization
 from bibtexparser.customization import *
 
 """plotting functions"""
@@ -21,7 +17,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 """date time functions """
-from datetime import datetime #idk bring in the system date or whatever
+from datetime import datetime #system date
 
 """csv"""
 import csv
@@ -30,11 +26,14 @@ import csv
 # In[2]:
 
 today = datetime.today()
-bib = 'CriticalOpenNeuro.bib' #bring that bib file in
 gc = GenderComputer(os.path.abspath('genderComputer/nameLists')) #make gendercomputer
 
 
 # In[3]:
+
+bib = 'CriticalOpenNeuro.bib' #bibtex file of choice; should modify for user-defined bib
+
+# In[4]:
 
 def customizations(record):
     """Use some functions delivered by the library
@@ -48,7 +47,7 @@ def customizations(record):
     return record
 
 
-# In[4]:
+# In[5]:
 
 def parseFile(bib_file):
     """parse the bib file
@@ -62,41 +61,51 @@ def parseFile(bib_file):
         parser.customization = customizations
         data = b.load(bibtex_file, parser = parser)
         return data
-
-
-# In[5]:
-
-women = 0
-men = 0
-uni = 0
-notav = 0
-auCount = 0
-
-unavailable = []
-
+    
+def clean_tex(s): #tex files are super gross
+    badSubstrings = ["{","}"]
+    for badSubstring in badSubstrings:
+        s = s.replace(badSubstring, "")
+    return s
 
 # In[6]:
 
+"""set variables"""
 
+auCount = 0
+notav = 0
+uni = 0
+men = 0
+women = 0
+unavailable = []
 
-def countGender(ts=True):
-    """take the bib database and count genders of authors
+# In[7]:
+
+def countGender(ts=True): #ts stands for troubleshooting, for papers w/ no authors or weird titles -- eventually build a feature that presents unassigned names and asks for manual assignment and modifies a database accordingly
+    """take the bib database and count authors
     """ 
     global auCount
-    global notav
-    global uni
-    global men
-    global women
-    global unavailable
+    global notav 
+    global uni 
+    global men 
+    global women 
+    global unavailable 
+    no_author = []
+    no_title = []
+    no_gender = []
     for entry in data.entries:
-        title = entry["title"]
+        if "title" in entry:
+            title = clean_tex(entry["title"])
+        else:
+            no_title.append(entry)
         if "author" in entry:
             authors = entry["author"] 
-        elif ts==True:
-            print "no author in", title
+        else:
+            no_author.append(title)
         for j in authors:
+            j = clean_tex(j)
             auCount += 1
-            gender = gc.resolveGender(j, None) #resolve gender, yay
+            gender = gc.resolveGender(j, None) #resolve gender, yay -- assumes all names are American though;
             if gender == 'male':
                 men += 1
             elif gender == 'female':
@@ -105,22 +114,18 @@ def countGender(ts=True):
                 uni += 1
             else:
                 notav += 1 
-                if ts == True:
-                    print j, title
-
-
-# In[7]:
-
-data = parseFile(bib) #run the parse file
-countGender(False)
+                no_gender.append(j)
+    if ts==True:
+        print "No author found in these Papers:\n\n" + '\n'.join(no_author)
+        print "\nNo gender on these Names:\n" + '\n'.join(no_gender) #eventually so I can manually add a list of names that I know, but the social security database doesn't
+        print "\n\nNo title on these entries:\n\n" + '\n'.join(no_title)  
+  
 
 
 # In[8]:
 
-"""writing names unassigned to a file for troubleshooting"""
-with open('unavailable_gender', 'wb') as myfile:
-    wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-    wr.writerow(unavailable)
+data = parseFile(bib) #r
+countGender(ts=True)
 
 
 # In[9]:
@@ -144,20 +149,16 @@ print percents
 print auCount
 
 
-# In[20]:
+# In[12]:
 
 plt.bar(range(len(stats)), percents.values(), align='center', color="#2aa198")
 plt.xticks(range(len(percents)), percents.keys(), color="#657b83")
-plt.xlabel('Gender Assigned (generated ' + str(today) +')', color="#073642")
-plt.ylabel('Percents', color="#073642")
+plt.xlabel('Genders' + '\n' +  '(plot generated ' + 'May 14 2015' +')', color="#073642")
+plt.ylabel('% of bibliography', color="#073642")
 
 
-# In[21]:
+plt.show()
 
-plt.savefig('gender_distr.png', bbox_inches='tight',transparent=True)
-
-
-# In[ ]:
 
 
 
